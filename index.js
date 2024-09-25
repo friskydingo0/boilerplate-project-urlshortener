@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const dns = require('dns');
+let shortener;
+import('./urlShortener.mjs').then((mod) => { shortener = mod });
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
@@ -16,7 +18,15 @@ app.get('/', function (req, res) {
 });
 
 app.get('/api/shorturl/:urlcode', (req, res) => {
-  res.redirect('/'); // TODO: fetch the url for the shorturl code and redirect there.
+  shortener.getFullUrl(req.params.urlcode, (err, data) => {
+    if (!err) {
+      res.redirect(data);
+    }
+    else {
+      res.json(err);
+    }
+  });
+
 });
 
 var bodyParser = require('body-parser');
@@ -24,22 +34,15 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 app.post('/api/shorturl', function (req, res) {
   const originalUrl = req.body.url;
-  const parts = originalUrl.split('/',);
-  console.log(parts);
-  if (parts.length < 3) {
-    res.json({ 'error': 'invalid url' });
-  }
-  else {
-    dns.lookup(parts[2], (err, address, family) => {
-      if (err) {
-        res.json({ 'error': 'invalid url' });
-      }
-      else {
-        // TODO: Call the URL shortener to create/fetch a shorturl for this url
-        res.json({ 'original_url': originalUrl, 'short_url': address });
-      }
-    });
-  }
+
+  shortener.default(originalUrl, (err, data) => {
+    if (!err) {
+      res.json(data);
+    }
+    else {
+      res.json(err);
+    }
+  });
 });
 
 app.listen(port, function () {
